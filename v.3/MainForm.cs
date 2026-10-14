@@ -4,7 +4,7 @@ namespace MarkdownLigero;
 
 public sealed class MainForm : Form
 {
-    private readonly TabControl _tabs = new() { Dock = DockStyle.Fill };
+    private readonly TabControl _tabs = new() { Dock = DockStyle.Fill, DrawMode = TabDrawMode.OwnerDrawFixed, Padding = new Point(16, 4) };
     private readonly ToolStripStatusLabel _fileStatus = new() { Spring = true, TextAlign = ContentAlignment.MiddleLeft };
     private readonly ToolStripStatusLabel _positionStatus = new() { TextAlign = ContentAlignment.MiddleRight };
     private readonly UiTranslations _translations = new();
@@ -27,6 +27,8 @@ public sealed class MainForm : Form
         _tabs.SelectedIndexChanged += (_, _) => UpdateUi();
         _tabs.ControlAdded += (_, _) => UpdateUi();
         _tabs.ControlRemoved += (_, _) => UpdateUi();
+        _tabs.DrawItem += DrawTab;
+        _tabs.MouseDown += TabsMouseDown;
         BuildChrome();
         CreateDocument();
     }
@@ -163,7 +165,56 @@ public sealed class MainForm : Form
         if (!string.Equals(Path.GetExtension(path), ".md", StringComparison.OrdinalIgnoreCase)) path += ".md";
         try { File.WriteAllText(path, document.Editor.Text, new UTF8Encoding(false)); document.MarkSaved(path); UpdateUi(); return true; } catch (Exception ex) { MessageBox.Show(this, $"{T("No se pudo guardar el archivo.")}\n\n{ex.Message}", Text, MessageBoxButtons.OK, MessageBoxIcon.Error); return false; }
     }
-    private void CloseCurrentDocument() { if (_tabs.SelectedTab is { } page && ConfirmClose(page.Tag as DocumentTab)) { _tabs.TabPages.Remove(page); page.Dispose(); if (_tabs.TabCount == 0) CreateDocument(); } }
+    private void CloseCurrentDocument()
+    {
+        if (_tabs.SelectedTab is { } page)
+            CloseDocument(page);
+    }
+
+    private void CloseDocument(TabPage page)
+    {
+        if (!ConfirmClose(page.Tag as DocumentTab))
+            return;
+
+        _tabs.TabPages.Remove(page);
+        page.Dispose();
+        if (_tabs.TabCount == 0)
+            CreateDocument();
+    }
+
+    private void DrawTab(object? sender, DrawItemEventArgs e)
+    {
+        var page = _tabs.TabPages[e.Index];
+        var bounds = _tabs.GetTabRect(e.Index);
+        var selected = e.State.HasFlag(DrawItemState.Selected);
+        using var background = new SolidBrush(selected ? SystemColors.ControlLightLight : SystemColors.Control);
+        e.Graphics.FillRectangle(background, bounds);
+        TextRenderer.DrawText(e.Graphics, page.Text, Font, new Rectangle(bounds.X + 8, bounds.Y + 3, bounds.Width - 30, bounds.Height - 6), SystemColors.ControlText, TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis);
+
+        var close = GetCloseButtonBounds(e.Index);
+        using var pen = new Pen(SystemColors.ControlDarkDark, 1.6F);
+        e.Graphics.DrawLine(pen, close.Left + 4, close.Top + 4, close.Right - 4, close.Bottom - 4);
+        e.Graphics.DrawLine(pen, close.Right - 4, close.Top + 4, close.Left + 4, close.Bottom - 4);
+    }
+
+    private void TabsMouseDown(object? sender, MouseEventArgs e)
+    {
+        for (var index = 0; index < _tabs.TabPages.Count; index++)
+        {
+            if (!GetCloseButtonBounds(index).Contains(e.Location))
+                continue;
+
+            _tabs.SelectedIndex = index;
+            CloseDocument(_tabs.TabPages[index]);
+            return;
+        }
+    }
+
+    private Rectangle GetCloseButtonBounds(int index)
+    {
+        var tab = _tabs.GetTabRect(index);
+        return new Rectangle(tab.Right - 21, tab.Top + (tab.Height - 16) / 2, 16, 16);
+    }
     private bool ConfirmClose(DocumentTab? document)
     {
         if (document is null || !document.IsDirty) return true;
