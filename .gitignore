@@ -1,0 +1,20 @@
+# .NET build output
+[Bb]in/
+[Oo]bj/
+
+# Local publish and release artifacts
+v.3/publish/
+v.3/portable/
+v.3/*.zip
+*.pdb
+
+# Local validation artifacts
+v.3/exe-icon-check.png
+
+# IDE and OS files
+.vs/
+.vscode/
+*.user
+*.suo
+Thumbs.db
+Desktop.ini

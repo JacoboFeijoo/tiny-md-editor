@@ -1,0 +1,22 @@
+msgid ""
+msgstr ""
+"Language: fr\\n"
+"Content-Type: text/plain; charset=UTF-8\\n"
+
+msgid "Archivo"
+msgstr "Fichier"
+
+msgid "Edición"
+msgstr "Édition"
+
+msgid "Ver"
+msgstr "Affichage"
+
+msgid "Acerca de"
+msgstr "À propos"
+
+msgid "Vista previa"
+msgstr "Aperçu"
+
+msgid "Ajustes…"
+msgstr "Paramètres…"
