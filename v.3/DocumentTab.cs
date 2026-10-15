@@ -159,38 +159,42 @@ public sealed class DocumentTab : UserControl
 
     public void SetHeading(int level)
     {
-        var lineIndex = Editor.GetLineFromCharIndex(Editor.SelectionStart);
-        var lines = Editor.Lines;
-        var current = lines[lineIndex];
+        var (lineStart, lineEnd) = GetLogicalLineRange();
+        var current = Editor.Text[lineStart..lineEnd];
         var trim = current.TrimStart();
         while (trim.StartsWith("#", StringComparison.Ordinal)) trim = trim[1..];
         if (trim.StartsWith(" ", StringComparison.Ordinal)) trim = trim[1..];
-        lines[lineIndex] = new string('#', level) + " " + trim;
-        Editor.Lines = lines;
-        var start = Editor.GetFirstCharIndexFromLine(lineIndex);
-        Editor.Select(start, lines[lineIndex].Length);
+        var heading = new string('#', level) + " " + trim;
+        Editor.Select(lineStart, lineEnd - lineStart);
+        Editor.SelectedText = heading;
+        Editor.Select(lineStart, heading.Length);
         Editor.Focus();
     }
 
     public void ToggleLinePrefix(string prefix)
     {
-        var selectionStart = Editor.SelectionStart;
-        var selectionEnd = selectionStart + Editor.SelectionLength;
-        var startLine = Editor.GetLineFromCharIndex(selectionStart);
-        var endLine = Editor.GetLineFromCharIndex(selectionEnd);
-        if (Editor.SelectionLength > 0 && selectionEnd == Editor.GetFirstCharIndexFromLine(endLine))
-            endLine--;
-
-        var lines = Editor.Lines;
-        var remove = Enumerable.Range(startLine, endLine - startLine + 1).All(index => lines[index].StartsWith(prefix, StringComparison.Ordinal));
-        for (var index = startLine; index <= endLine; index++)
+        var (lineStart, lineEnd) = GetLogicalLineRange();
+        var lines = Editor.Text[lineStart..lineEnd].Split('\n');
+        var remove = lines.All(line => line.TrimEnd('\r').StartsWith(prefix, StringComparison.Ordinal));
+        for (var index = 0; index < lines.Length; index++)
             lines[index] = remove ? lines[index][prefix.Length..] : prefix + lines[index];
 
-        Editor.Lines = lines;
-        var newStart = Editor.GetFirstCharIndexFromLine(startLine);
-        var newEnd = Editor.GetFirstCharIndexFromLine(endLine) + lines[endLine].Length;
-        Editor.Select(newStart, Math.Max(0, newEnd - newStart));
+        var replacement = string.Join("\n", lines);
+        Editor.Select(lineStart, lineEnd - lineStart);
+        Editor.SelectedText = replacement;
+        Editor.Select(lineStart, replacement.Length);
         Editor.Focus();
+    }
+
+    private (int Start, int End) GetLogicalLineRange()
+    {
+        var text = Editor.Text;
+        var selectionStart = Math.Min(Editor.SelectionStart, text.Length);
+        var selectionEnd = Math.Min(selectionStart + Editor.SelectionLength, text.Length);
+        var finalCharacter = Editor.SelectionLength == 0 ? selectionStart : Math.Max(selectionStart, selectionEnd - 1);
+        var start = text.LastIndexOf('\n', Math.Max(0, selectionStart - 1)) + 1;
+        var end = text.IndexOf('\n', finalCharacter);
+        return (start, end < 0 ? text.Length : end);
     }
 
     private void RenderPreview()
