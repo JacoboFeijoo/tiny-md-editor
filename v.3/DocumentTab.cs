@@ -16,8 +16,8 @@ public sealed class DocumentTab : UserControl
         Dock = DockStyle.Fill,
         Font = new Font("Cascadia Mono", 11F),
         Multiline = true,
-        ScrollBars = ScrollBars.Both,
-        WordWrap = false
+        ScrollBars = ScrollBars.Vertical,
+        WordWrap = true
     };
 
     public string? FilePath { get; private set; }
